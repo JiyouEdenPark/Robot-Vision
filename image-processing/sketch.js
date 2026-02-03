@@ -13,7 +13,12 @@ let scaleFactor = 0.5; // 해상도 낮추면 더 빠름
 const TRAIL_FADE = 0.98; // 1에 가까울수록 잔상 오래 남음
 const EDGE_THRESHOLD = 70; // 이 값 이상인 엣지만 남김
 const MOTION_THRESHOLD = 30; // 픽셀 차이 이하면 정지로 봄
-const MOTION_MAX = 180;      // 이 이상이면 최고속(빨강), 그 사이는 느리면 초록→빨강
+const MOTION_MAX = 100;      // 이 이상이면 최고속(빨강), 그 사이는 느리면 초록→빨강
+
+// 자동 촬영
+const CAPTURE_RED_THRESHOLD = 50;   // 빨강(빠른 움직임) 비율이 이 퍼센트 넘으면 촬영
+const CAPTURE_COOLDOWN_MS = 5000;   // 촬영 후 5초간 재촬영 안 함
+let lastCaptureTime = 0;
 
 // Sobel 커널
 const sobelX = [
@@ -133,7 +138,13 @@ function draw() {
   image(edgeDisplay, 0, 0);
 
   // 5) HUD: 잔상 정도 및 빨간색/초록색 통계
-  drawHUD(disp, len);
+  const stats = drawHUD(disp, len);
+
+  // 6) 자동 촬영: 빨강(빠른 움직임) 50 초과이고, 5초 경과했으면 촬영
+  if (stats.redPercent > CAPTURE_RED_THRESHOLD && (millis() - lastCaptureTime) >= CAPTURE_COOLDOWN_MS) {
+    saveCanvas('capture_' + Date.now(), 'png');
+    lastCaptureTime = millis();
+  }
 }
 
 function drawHUD(edgePixels, pixelCount) {
@@ -267,4 +278,6 @@ function drawHUD(edgePixels, pixelCount) {
   rect(20, 140, 280 * (greenPercent / 100), 12, 2);
 
   pop();
+
+  return { redCount, greenCount, totalEdgePixels, redPercent, greenPercent };
 }
